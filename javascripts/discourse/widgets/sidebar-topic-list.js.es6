@@ -12,6 +12,11 @@ function listKey(attrs) {
   return `${attrs.topicId}-${attrs.list.name}`;
 }
 
+function checkDirectLinkability(url) {
+  // TODO: check the provided url against the list of urls provided in settings
+  return false;
+}
+
 export default createWidget("sidebar-topic-list", {
   tagName: "div.sidebar-topic-list",
   buildKey: (attrs) => `sidebar-topic-list-${listKey(attrs)}`,
@@ -32,7 +37,12 @@ export default createWidget("sidebar-topic-list", {
     let result = [];
     
     if (!announcement) {
-      result.push(h('h3', h('a', { attributes: { href: `/${list.url}` }}, list.name)))
+      let link = list.url
+      if (checkDirectLinkability(list.url)) {
+        link = list.featured_link // I think this should work, but requires testing
+      }
+
+      result.push(h('h3', h('a', { attributes: { href: `/${link}` }}, list.name)))
     }
     
     let topicList;
@@ -98,6 +108,7 @@ export default createWidget("sidebar-topic-list", {
   },
   
   clickTopic(topic) {
+    // NOTE: should this instead record the direct link if applicable?
     this.recordAnalytics({ topic_ids: [topic.id], url: topic.url }, 'click');
     const url = this.state.announcement ? topic.ad_url : topic.url;
     DiscourseUrl.routeTo(url);
