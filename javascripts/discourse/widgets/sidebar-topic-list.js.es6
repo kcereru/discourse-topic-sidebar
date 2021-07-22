@@ -8,12 +8,22 @@ import { isRTL } from "discourse/lib/text-direction";
 import Site from "discourse/models/site";
 import RawHtml from "discourse/widgets/raw-html";
 
+
+const directlyLinkable = settings.direct_links.split('|');
+
+
 function listKey(attrs) { 
   return `${attrs.topicId}-${attrs.list.name}`;
 }
 
-function checkDirectLinkability(url) {
-  // TODO: check the provided url against the list of urls provided in settings
+function isDirectlyLinkable(url) {
+  if(url) {
+    let hostname = new URL(url).hostname;
+    if(directlyLinkable.includes(hostname)) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -33,16 +43,11 @@ export default createWidget("sidebar-topic-list", {
     const { announcement } = state;
     const loadingTopics = list.topics === null;
     const hasTopics = !loadingTopics && list.topics.length;
-    
+
     let result = [];
     
     if (!announcement) {
-      let link = list.url
-      if (checkDirectLinkability(list.url)) {
-        link = list.featured_link // I think this should work, but requires testing
-      }
-
-      result.push(h('h3', h('a', { attributes: { href: `/${link}` }}, list.name)))
+      result.push(h('h3', h('a', { attributes: { href: `/${list.url}` }}, list.name)))
     }
     
     let topicList;
@@ -108,9 +113,17 @@ export default createWidget("sidebar-topic-list", {
   },
   
   clickTopic(topic) {
-    // NOTE: should this instead record the direct link if applicable?
     this.recordAnalytics({ topic_ids: [topic.id], url: topic.url }, 'click');
-    const url = this.state.announcement ? topic.ad_url : topic.url;
+    
+    let url = topic.url;
+
+    if(this.state.announcement) {
+      url = topic.ad_url;
+    }
+    else if(isDirectlyLinkable(topic.featured_link)) {
+      url = topic.featured_link;
+    }
+
     DiscourseUrl.routeTo(url);
   },
   
